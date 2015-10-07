@@ -270,28 +270,26 @@ public class P3CoralProgram {
 			System.arraycopy(value_bytes, PcapRec.POS_SIP+8, srcPort, 0, 2);
 			System.arraycopy(value_bytes, PcapRec.POS_SIP+10, dstPort, 0, 2);
 
-			if ( Bytes.toInt(srcPort) == 80 || Bytes.toInt(dstPort) == 80 )
-			{
-				System.arraycopy(value_bytes, PcapRec.POS_SIP, ip, 0, 4);
-				strTuple += CommonData.longTostrIp(Bytes.toLong(ip))+" ";
-				System.arraycopy(value_bytes, PcapRec.POS_SIP+4, ip, 0, 4);
-				strTuple += CommonData.longTostrIp(Bytes.toLong(ip))+" ";
-				//System.arraycopy(value_bytes, PcapRec.POS_SIP+8, port, 0, 2);
-				strTuple += Bytes.toLong(srcPort)+" ";		
-				//System.arraycopy(value_bytes, PcapRec.POS_SIP+10, port, 0, 2);
-				strTuple += Bytes.toInt(dstPort)+" ";	
-				System.arraycopy(value_bytes, PcapRec.POS_PT, proto, 0, 1);
-				strTuple += Bytes.toInt(proto)+" ";	
+
+			/*System.arraycopy(value_bytes, PcapRec.POS_SIP, ip, 0, 4);
+			strTuple += CommonData.longTostrIp(Bytes.toLong(ip))+" ";
+			System.arraycopy(value_bytes, PcapRec.POS_SIP+4, ip, 0, 4);
+			strTuple += CommonData.longTostrIp(Bytes.toLong(ip))+" ";
+			//System.arraycopy(value_bytes, PcapRec.POS_SIP+8, port, 0, 2);
+			strTuple += Bytes.toLong(srcPort)+" ";		
+			//System.arraycopy(value_bytes, PcapRec.POS_SIP+10, port, 0, 2);
+			strTuple += Bytes.toInt(dstPort)+" ";	
+			System.arraycopy(value_bytes, PcapRec.POS_PT, proto, 0, 1);
+			strTuple += Bytes.toInt(proto)+" ";	
+		
+			String out = cap_time.toString() + ":" + cap_time_2.toString() + ":" + ibc.toString(); 
+		
+			//output.collect(new Text(strTuple), new Text(out));
+			output.collect(new Text(strTuple), new Text(Bytes.toInt(bc)+" "+1));	*/
+			output.collect(new Text(Long.toString(Bytes.toLong(srcPort))), new Text(""+1));
+			output.collect(new Text(Long.toString(Bytes.toLong(dstPort))), new Text(""+1));				
+			//output.collect(new Text(dstPort), new Text(""+1));	
 			
-				String out = cap_time.toString() + ":" + cap_time_2.toString() + ":" + ibc.toString(); 
-			
-				output.collect(new Text(strTuple), new Text(out));
-			}
-			
-			
-			long sleepTime = MAPms*1000000L; // convert to nanoseconds
-			long startTime = System.nanoTime();
-			while ((System.nanoTime() - startTime) < sleepTime) {}
 		}
 	}
 	
@@ -309,51 +307,13 @@ public class P3CoralProgram {
 	                    OutputCollector<Text, Text> output, Reporter reporter)
 	                   throws IOException {
 
-	    	Long bc_sum = new Long(0);
-	    	StringTokenizer stok; 
-	    	String t1, t2, bc;
-	    	//ArrayList<BigInteger> t_list = new ArrayList<BigInteger>();
-	    	//ArrayList<PacketInfo> p_list = new ArrayList<PacketInfo> ();
-	    	
-	    	
-	    	long packet_count = 0;
-	    	
-	    	while(value.hasNext()){  
-	    			String line = value.next().toString();
-	    			stok = new StringTokenizer(line,":");
-	    			if(line.length()<0)  continue;
-	    			t1 = stok.nextToken();
-	    			t2 = stok.nextToken();
-	    			bc = stok.nextToken();
-	    			
-	    			packet_count++;
-	    			
-	    			bc_sum = bc_sum + Long.parseLong(bc);
-//	    			BigInteger bi = new BigInteger(t1);
-//	    			bi = bi.multiply(new BigInteger("1000000"));
-//	    			bi = bi.add(new BigInteger(t2));
-//	    			t_list.add(bi);	    			
-//	    			p_list.add(new PacketInfo(bi, Long.parseLong(bc)));
-	    	}	  
-	    	
-//	    	BigInteger[] bi_array = t_list.toArray(new BigInteger[t_list.size()]);
-//	    	java.util.Arrays.sort(bi_array);
-	    	
-//	    	PacketInfo[] pi_array = p_list.toArray(new PacketInfo[p_list.size()]);
-//	    	java.util.Arrays.sort(pi_array);
-	    	
-	    	String out = bc_sum.toString() + " " + packet_count + " ";
-//	    	for (int i = 1; i < bi_array.length; i++)
-//	    	{
-//	    		out = out + bi_array[i].subtract(bi_array[i-1]).toString() + " ";
-//	    	}
-	    	output.collect(key, new Text(out));  
-	    	
-		long sleepTime = REDms*1000000L; // convert to nanoseconds
-		long startTime = System.nanoTime();
-		while ((System.nanoTime() - startTime) < sleepTime) {}
+            long sum = 0;
 
-	    	
+            while( value.hasNext() ) {  
+                sum += 1;//Long.parseLong( value.next().toString() );
+                value.next();
+            }
+            output.collect(key, new Text(Long.toString(sum)));
 	    }
     }
 
