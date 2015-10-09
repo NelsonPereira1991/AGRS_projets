@@ -8,7 +8,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.StringTokenizer;
-
+import java.util.regex.Pattern;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.BytesWritable;
@@ -266,50 +266,37 @@ public class P3CoralProgram {
 			
 			System.arraycopy(value_bytes, PcapRec.POS_IP_BYTES, bc, 0, 2);				
 			Long ibc = Bytes.toLong(bc);
-
+			System.arraycopy(value_bytes, PcapRec.POS_HL, ipHeaderlength, 0, 1);
 			
-			String strTuple = "";	
+			int totalIPHeaderLength = (Bytes.toInt(ipHeaderlength) & 0xF) * 4;
+			int POS_TCP = 30 + totalIPHeaderLength;
 			
+			System.arraycopy(value_bytes, PcapRec.POS_IP_BYTES, iplength, 0, PcapRec.LEN_IP_BYTES);
 			System.arraycopy(value_bytes, PcapRec.POS_SIP+8, srcPort, 0, 2);
 			System.arraycopy(value_bytes, PcapRec.POS_SIP+10, dstPort, 0, 2);
-			System.arraycopy(value_bytes, PcapRec.POS_TCP + 12, tcpHeader, 0, 1);
-			System.arraycopy(value_bytes, PcapRec.POS_HL, ipHeaderlength, 0, 1);
-			System.arraycopy(value_bytes, PcapRec.POS_IP_BYTES, iplength, 0, PcapRec.LEN_IP_BYTES)
+			System.arraycopy(value_bytes, POS_TCP+12, tcpHeader, 0, 1);
 			
 			int totalIPLength = Bytes.toInt(iplength);
-			int totalIPHeaderLength = (Bytes.toInt(ipHeaderlength) & 0xF) * 4;
-			int tcpHeaderLenght = (Bytes.toInt(tcpHeader) >> 4) * 4;
-			
+			int tcpHeaderLenght = (Bytes.toInt(tcpHeader) >> 4) * 4;			
 			int payloadLength = totalIPLength - totalIPHeaderLength - tcpHeaderLenght;
 			byte[] payload = new byte[payloadLength];
 			
-			System.arraycopy(value_bytes, PcapRec.POS_TCP + headerLength, payload, 0, payloadLength);
+			System.arraycopy(value_bytes, POS_TCP+tcpHeaderLenght, payload, 0, payloadLength);
+			String payloadText = new String(payload, "UTF-8");
 			
-			String payoadText = new String(payload, StandardCharsets.UTF_8);
-			
-			
-			if(payloadText.contains("HTTP/"))
-			  output.collect(new Text("HTTP2")), new Text(""+1));
+			if ( Pattern.compile("GET /.* HTTP/\\d.\\d").matcher(payloadText).find() )
+			{
+			    /*System.out.println("POS_TCP: "+POS_TCP);
+			    System.out.println("totalIP: "+totalIPLength);
+			    System.out.println("totalIPHeader: "+totalIPHeaderLength);
+			    System.out.println("totalTCPHeader: "+tcpHeaderLenght);
+				System.out.println("Payload: "+payloadText);*/
+				
+				output.collect(new Text("HTTP2"), new Text(""+1));
+			}
 
-			/*System.arraycopy(value_bytes, PcapRec.POS_SIP, ip, 0, 4);
-			strTuple += CommonData.longTostrIp(Bytes.toLong(ip))+" ";
-			System.arraycopy(value_bytes, PcapRec.POS_SIP+4, ip, 0, 4);
-			strTuple += CommonData.longTostrIp(Bytes.toLong(ip))+" ";
-			//System.arraycopy(value_bytes, PcapRec.POS_SIP+8, port, 0, 2);
-			strTuple += Bytes.toLong(srcPort)+" ";		
-			//System.arraycopy(value_bytes, PcapRec.POS_SIP+10, port, 0, 2);
-			strTuple += Bytes.toInt(dstPort)+" ";	
-			System.arraycopy(value_bytes, PcapRec.POS_PT, proto, 0, 1);
-			strTuple += Bytes.toInt(proto)+" ";	
-		
-			String out = cap_time.toString() + ":" + cap_time_2.toString() + ":" + ibc.toString(); 
-		
-			//output.collect(new Text(strTuple), new Text(out));
-			output.collect(new Text(strTuple), new Text(Bytes.toInt(bc)+" "+1));	*/
-			output.collect(new Text(Long.toString(Bytes.toLong(srcPort))), new Text(""+1));
-			output.collect(new Text(Long.toString(Bytes.toLong(dstPort))), new Text(""+1));				
-			//output.collect(new Text(dstPort), new Text(""+1));	
-			
+		    output.collect(new Text(Long.toString(Bytes.toLong(srcPort))), new Text(""+1));
+		    output.collect(new Text(Long.toString(Bytes.toLong(dstPort))), new Text(""+1));		
 		}
 	}
 	

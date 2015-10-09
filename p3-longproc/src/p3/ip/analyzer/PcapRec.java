@@ -12,8 +12,6 @@ public class PcapRec{
 	public static final int POS_IP_VER = 30;	
 	public static final int LEN_IP_VER = 1;
 	
-	public static final int LEN
-	
 	public static final int POS_IP_BYTES = 32;
 	public static final int POS_IPV6_BYTES = 34;		
 	public static final int LEN_IP_BYTES = 2;
@@ -26,7 +24,9 @@ public class PcapRec{
 	public static final int POS_DP = 52;
 	public static final int ICMP_TC = 50;	
 	public static final int POS_HTTP = 70;
-	
+
+	public static final int POS_TCP = 50;
+
 	public static final int POS_TSTMP = 0;
 	
 	public static final int LEN_IPADDR=4;
@@ -42,6 +42,5 @@ public class PcapRec{
 	public static final int POS_V_BC = POS_VAL;		
 	public static final int POS_V_PC = LEN_VAL1+POS_VAL;
 //	public static final int POS_V_FC = LEN_VAL2+POS_VAL;
-	public static final int POS_TCP = 50;
 	
 }
