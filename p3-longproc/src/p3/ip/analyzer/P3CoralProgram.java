@@ -258,7 +258,10 @@ public class P3CoralProgram {
 			byte[] srcPort = new byte[2];
 			byte[] dstPort = new byte[2];
 			byte[] proto = new byte[1];
-			byte[] bc= new byte[2];			
+			byte[] bc= new byte[2];	
+			byte[] tcpHeader = new byte[1];
+			byte[] ipHeaderlength = new byte[1];
+			byte[] iplength = new byte[2];
 			
 			
 			System.arraycopy(value_bytes, PcapRec.POS_IP_BYTES, bc, 0, 2);				
@@ -266,10 +269,27 @@ public class P3CoralProgram {
 
 			
 			String strTuple = "";	
-
+			
 			System.arraycopy(value_bytes, PcapRec.POS_SIP+8, srcPort, 0, 2);
 			System.arraycopy(value_bytes, PcapRec.POS_SIP+10, dstPort, 0, 2);
-
+			System.arraycopy(value_bytes, PcapRec.POS_TCP + 12, tcpHeader, 0, 1);
+			System.arraycopy(value_bytes, PcapRec.POS_HL, ipHeaderlength, 0, 1);
+			System.arraycopy(value_bytes, PcapRec.POS_IP_BYTES, iplength, 0, PcapRec.LEN_IP_BYTES)
+			
+			int totalIPLength = Bytes.toInt(iplength);
+			int totalIPHeaderLength = (Bytes.toInt(ipHeaderlength) & 0xF) * 4;
+			int tcpHeaderLenght = (Bytes.toInt(tcpHeader) >> 4) * 4;
+			
+			int payloadLength = totalIPLength - totalIPHeaderLength - tcpHeaderLenght;
+			byte[] payload = new byte[payloadLength];
+			
+			System.arraycopy(value_bytes, PcapRec.POS_TCP + headerLength, payload, 0, payloadLength);
+			
+			String payoadText = new String(payload, StandardCharsets.UTF_8);
+			
+			
+			if(payloadText.contains("HTTP/"))
+			  output.collect(new Text("HTTP2")), new Text(""+1));
 
 			/*System.arraycopy(value_bytes, PcapRec.POS_SIP, ip, 0, 4);
 			strTuple += CommonData.longTostrIp(Bytes.toLong(ip))+" ";
