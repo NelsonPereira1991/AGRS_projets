@@ -203,7 +203,130 @@ public class P3CoralProgram {
 		e.printStackTrace();
 	}
   }
- 
+
+    /*******************************************
+
+			TrafficAnalyzer function
+    *******************************************/
+
+	
+	
+	public static class Map_TrafficAnalyzer extends MapReduceBase 
+	implements Mapper<LongWritable, BytesWritable, Text, Text>{
+
+		
+		int interval = 0;
+		long MAPms = 0;
+		public void configure(JobConf conf){
+			interval = conf.getInt("pcap.record.rate.interval", 60);
+			MAPms = conf.getLong("pcap.artificial.mapms", 0);
+		}	
+		
+	    public double PDNormalDistribution(double m, double d, double x ) {	
+		    return 1/(d*Math.sqrt(2*Math.PI)) * 
+					    Math.exp( - Math.pow((x-m), 2) / (2*Math.pow(d, 2)) );
+	    }
+		
+		public void map
+				(LongWritable key, BytesWritable value, 
+				OutputCollector<Text, Text> output, Reporter reporter) throws IOException {		
+
+			
+			byte[] pkts = {0x00, 0x01};	
+			byte[] eth_type = new byte[2];
+			byte[] bcap_time = new byte[4];
+			byte[] value_bytes = value.getBytes();			
+			if(value_bytes.length<MIN_PKT_SIZE) return;			
+			System.arraycopy(value_bytes, PcapRec.POS_ETH_TYPE, eth_type, 0, PcapRec.LEN_ETH_TYPE);
+			if(BinaryUtils.byteToInt(eth_type) != PcapRec.IP_PROTO) return;
+
+            byte[] bc= new byte[2];	
+			System.arraycopy(value_bytes, PcapRec.POS_IP_BYTES, bc, 0, 2);				
+			double ibc = (double)Bytes.toLong(bc);
+			
+            double httpProb = PDNormalDistribution(1300, 100, ibc);
+            double smtpProb = PDNormalDistribution(100, 50, ibc);
+
+            if ( httpProb > smtpProb ) {
+                output.collect(new Text("HTTP"), new Text(""+1));
+            } 
+            else {
+                output.collect(new Text("SMTP"), new Text(""+1));
+            }
+
+		}
+	}
+	
+	public static class Reduce_TrafficAnalyzer extends MapReduceBase 
+	implements Reducer<Text, Text, Text, Text> {	
+    	
+		int interval = 0;		
+		long REDms = 0;
+		public void configure(JobConf conf){
+			interval = conf.getInt("pcap.record.rate.interval", 60);		
+			REDms = conf.getLong("pcap.artificial.redms", 0);
+		}
+		
+	    public void reduce(Text key, Iterator<Text> value,
+	                    OutputCollector<Text, Text> output, Reporter reporter)
+	                   throws IOException {
+
+            long sum = 0;
+
+            while( value.hasNext() ) {  
+                sum += 1;//Long.parseLong( value.next().toString() );
+                value.next();
+            }
+            output.collect(key, new Text(Long.toString(sum)));
+	    }
+    }
+
+	
+	private JobConf getTrafficAnalyzerJobConf(String jobName, Path inFilePath, Path outFilePath){
+		
+		JobConf conf = new JobConf(P3CoralProgram.class);
+		 
+        conf.setJobName(jobName);
+        conf.setNumReduceTasks(2);
+        
+        conf.setOutputKeyClass(Text.class);
+        conf.setOutputValueClass(Text.class);	 
+        conf.setInputFormat(PcapInputFormat.class); 
+        conf.setOutputFormat(TextOutputFormat.class);
+        
+        conf.setMapperClass(Map_TrafficAnalyzer.class);
+        conf.setReducerClass(Reduce_TrafficAnalyzer.class);    
+
+        
+        FileInputFormat.setInputPaths(conf, inFilePath);
+        FileOutputFormat.setOutputPath(conf, outFilePath);
+        
+        return conf;
+	}
+	    
+    public void startTrafficAnalyzer(Path inputDir, Path outputDir, long cap_start, long cap_end, long MAPms, long REDms){// throws IOException {
+        
+	try {
+		FileSystem fs = FileSystem.get(conf);
+        JobConf countJobconf = getTrafficAnalyzerJobConf("TrafficAnalyzer", inputDir, outputDir);        
+        countJobconf.setLong("pcap.file.captime.min", cap_start);
+        countJobconf.setLong("pcap.file.captime.max", cap_end);
+        
+        countJobconf.setLong("pcap.artificial.mapms", MAPms);
+        countJobconf.setLong("pcap.artificial.redms", REDms);
+        
+        // delete any output that might exist from a previous run of this job
+        if (fs.exists(FileOutputFormat.getOutputPath(countJobconf))) {
+          fs.delete(FileOutputFormat.getOutputPath(countJobconf), true);
+        }        
+		JobClient.runJob(countJobconf);	
+		
+	} catch (IOException e) {
+		// TODO Auto-generated catch block
+		e.printStackTrace();
+	}
+  }    
+    
     
 
     /*******************************************
