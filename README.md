@@ -16,3 +16,8 @@ hadoop jar p3lite.jar p3.runner.PacketCount -r/pcap/http.pcap
 hadoop fs -ls /user/ubuntu/PcapPacketCount_out
 hadoop fs -copyToLocal /user/ubuntu/PcapPacketCount_out/part-00000 /home/ubuntu/part-00000
 ```
+
+# Correr na própria máquina
+```
+java -cp p3lite.jar:lib/* p3.runner.TrafficAnalyzer -r../http.pcap
+```

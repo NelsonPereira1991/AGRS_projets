@@ -231,7 +231,7 @@ public class P3CoralProgram {
 				(LongWritable key, BytesWritable value, 
 				OutputCollector<Text, Text> output, Reporter reporter) throws IOException {		
 
-			
+
 			byte[] pkts = {0x00, 0x01};	
 			byte[] eth_type = new byte[2];
 			byte[] bcap_time = new byte[4];
@@ -239,13 +239,42 @@ public class P3CoralProgram {
 			if(value_bytes.length<MIN_PKT_SIZE) return;			
 			System.arraycopy(value_bytes, PcapRec.POS_ETH_TYPE, eth_type, 0, PcapRec.LEN_ETH_TYPE);
 			if(BinaryUtils.byteToInt(eth_type) != PcapRec.IP_PROTO) return;
-
-            byte[] bc= new byte[2];	
-			System.arraycopy(value_bytes, PcapRec.POS_IP_BYTES, bc, 0, 2);				
-			double ibc = (double)Bytes.toLong(bc);
+		
+			byte[] ip = new byte[4];
+			byte[] port = new byte[2];
+			byte[] srcPort = new byte[2];
+			byte[] dstPort = new byte[2];
+			byte[] proto = new byte[1];
+			byte[] bc = new byte[2];	
+			byte[] tcpHeader = new byte[1];
+			byte[] ipHeaderlength = new byte[1];
+			byte[] iplength = new byte[2];
 			
-            double httpProb = PDNormalDistribution(1300, 100, ibc);
-            double smtpProb = PDNormalDistribution(100, 50, ibc);
+			
+			System.arraycopy(value_bytes, PcapRec.POS_IP_BYTES, bc, 0, 2);				
+			Long ibc = Bytes.toLong(bc);
+			System.arraycopy(value_bytes, PcapRec.POS_HL, ipHeaderlength, 0, 1);
+			
+			int totalIPHeaderLength = (Bytes.toInt(ipHeaderlength) & 0xF) * 4;
+			int POS_TCP = 30 + totalIPHeaderLength;
+			
+			System.arraycopy(value_bytes, PcapRec.POS_IP_BYTES, iplength, 0, PcapRec.LEN_IP_BYTES);
+			System.arraycopy(value_bytes, PcapRec.POS_SIP+8, srcPort, 0, 2);
+			System.arraycopy(value_bytes, PcapRec.POS_SIP+10, dstPort, 0, 2);
+			System.arraycopy(value_bytes, POS_TCP+12, tcpHeader, 0, 1);
+			
+			int totalIPLength = Bytes.toInt(iplength);
+			int tcpHeaderLenght = (Bytes.toInt(tcpHeader) >> 4) * 4;			
+			int payloadLength = totalIPLength - totalIPHeaderLength - tcpHeaderLenght;
+			//byte[] payload = new byte[payloadLength];
+			//System.arraycopy(value_bytes, POS_TCP+tcpHeaderLenght, payload, 0, payloadLength);
+			//String payloadText = new String(payload, "UTF-8");
+
+            // Discart when payload length is 0
+            if( payloadLength == 0 ) return;
+			
+            double httpProb = PDNormalDistribution(1300, 100, payloadLength);
+            double smtpProb = PDNormalDistribution(100, 50, payloadLength);
 
             if ( httpProb > smtpProb ) {
                 output.collect(new Text("HTTP"), new Text(""+1));
