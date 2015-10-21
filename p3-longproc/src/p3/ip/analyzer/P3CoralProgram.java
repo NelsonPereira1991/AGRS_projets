@@ -270,7 +270,7 @@ public class P3CoralProgram {
 			//System.arraycopy(value_bytes, POS_TCP+tcpHeaderLenght, payload, 0, payloadLength);
 			//String payloadText = new String(payload, "UTF-8");
 
-            // Discart when payload length is 0
+            // Discard when payload length is 0
             if( payloadLength == 0 ) return;
 			
             double httpProb = PDNormalDistribution(1300, 100, payloadLength);
