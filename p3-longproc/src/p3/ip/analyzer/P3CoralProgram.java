@@ -271,10 +271,11 @@ public class P3CoralProgram {
 			//String payloadText = new String(payload, "UTF-8");
 
             // Discard when payload length is 0
-            if( payloadLength == 0 ) return;
-			
+            if( payloadLength == 0 ) return;			
             double httpProb = PDNormalDistribution(1300, 100, payloadLength);
             double smtpProb = PDNormalDistribution(100, 50, payloadLength);
+
+            //System.out.println("Length: " + payloadLength + " log: " + logPayloadLength);
 
             if ( httpProb > smtpProb ) {
                 output.collect(new Text("HTTP"), new Text(""+1));
