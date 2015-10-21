@@ -17,7 +17,7 @@ import p3.ip.analyzer.P3CoralProgram;
 public class TrafficAnalyzer {
 
 	static final String INPATH = "pcap_in";
-	static final String OUTPATH = "TrafficAnalyzer_out";	
+	static final String OUTPATH = "logs/TrafficAnalyzer_out";	
 	private static final int PCAP_FILE_HEADER_LENGTH = 24;  
 	private static final int ONEDAYINSEC = 432000;
 	
