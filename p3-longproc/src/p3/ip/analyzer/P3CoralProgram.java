@@ -7,6 +7,8 @@ import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Iterator;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.StringTokenizer;
 import java.util.regex.Pattern;
 import org.apache.hadoop.fs.FileSystem;
@@ -214,6 +216,12 @@ public class P3CoralProgram {
 	public static class Map_TrafficAnalyzer extends MapReduceBase 
 	implements Mapper<LongWritable, BytesWritable, Text, Text>{
 
+
+		// pcap 16; start 0;
+		// Ethernet 14 bytes; start 14; 
+		// IP 20 bytes; start 30; len 32; proto 39; srcIP 42; dstIP 46
+		// TCP 20 bytes ; start 50; srcPort 50; dstPort 52
+
 		
 		int interval = 0;
 		long MAPms = 0;
@@ -221,12 +229,7 @@ public class P3CoralProgram {
 			interval = conf.getInt("pcap.record.rate.interval", 60);
 			MAPms = conf.getLong("pcap.artificial.mapms", 0);
 		}	
-		
-	    public double PDNormalDistribution(double m, double d, double x ) {	
-		    return 1/(d*Math.sqrt(2*Math.PI)) * 
-					    Math.exp( - Math.pow((x-m), 2) / (2*Math.pow(d, 2)) );
-	    }
-		
+				
 		public void map
 				(LongWritable key, BytesWritable value, 
 				OutputCollector<Text, Text> output, Reporter reporter) throws IOException {		
@@ -239,6 +242,14 @@ public class P3CoralProgram {
 			if(value_bytes.length<MIN_PKT_SIZE) return;			
 			System.arraycopy(value_bytes, PcapRec.POS_ETH_TYPE, eth_type, 0, PcapRec.LEN_ETH_TYPE);
 			if(BinaryUtils.byteToInt(eth_type) != PcapRec.IP_PROTO) return;
+
+			System.arraycopy(value_bytes, PcapRec.POS_TSTMP, bcap_time, 0, 4);	
+			Long cap_time = new Long(0);			
+			cap_time = Bytes.toLong(BinaryUtils.flipBO(bcap_time,4));
+
+			System.arraycopy(value_bytes, PcapRec.POS_TSTMP+4, bcap_time, 0, 4);	
+			Long cap_time_2 = new Long(0);			
+			cap_time_2 = Bytes.toLong(BinaryUtils.flipBO(bcap_time,4));
 		
 			byte[] ip = new byte[4];
 			byte[] port = new byte[2];
@@ -251,6 +262,13 @@ public class P3CoralProgram {
 			byte[] iplength = new byte[2];
 			
 			
+			System.arraycopy(value_bytes, PcapRec.POS_PT, proto, 0, 1);
+            Long protocol = Bytes.toLong(proto);
+			System.arraycopy(value_bytes, PcapRec.POS_SIP, ip, 0, 4);
+            String sourceIP = CommonData.longTostrIp(Bytes.toLong(ip));
+			System.arraycopy(value_bytes, PcapRec.POS_SIP+4, ip, 0, 4);
+            String destinationIP = CommonData.longTostrIp(Bytes.toLong(ip));
+
 			System.arraycopy(value_bytes, PcapRec.POS_IP_BYTES, bc, 0, 2);				
 			Long ibc = Bytes.toLong(bc);
 			System.arraycopy(value_bytes, PcapRec.POS_HL, ipHeaderlength, 0, 1);
@@ -262,6 +280,9 @@ public class P3CoralProgram {
 			System.arraycopy(value_bytes, PcapRec.POS_SIP+8, srcPort, 0, 2);
 			System.arraycopy(value_bytes, PcapRec.POS_SIP+10, dstPort, 0, 2);
 			System.arraycopy(value_bytes, POS_TCP+12, tcpHeader, 0, 1);
+
+            Long sourcePort = Bytes.toLong(srcPort);
+            Long destinationPort = Bytes.toLong(dstPort);
 			
 			int totalIPLength = Bytes.toInt(iplength);
 			int tcpHeaderLenght = (Bytes.toInt(tcpHeader) >> 4) * 4;			
@@ -271,19 +292,12 @@ public class P3CoralProgram {
 			//String payloadText = new String(payload, "UTF-8");
 
             // Discard when payload length is 0
-            if( payloadLength == 0 ) return;			
-            double httpProb = PDNormalDistribution(1300, 100, payloadLength);
-            double smtpProb = PDNormalDistribution(100, 50, payloadLength);
+            if( payloadLength == 0 || protocol != 6 ) return;	
 
-            //System.out.println("Length: " + payloadLength + " log: " + logPayloadLength);
-
-            if ( httpProb > smtpProb ) {
-                output.collect(new Text("HTTP"), new Text(""+1));
-            } 
-            else {
-                output.collect(new Text("SMTP"), new Text(""+1));
-            }
-
+    		output.collect(
+                new Text(sourceIP+","+destinationIP+","+sourcePort+","+destinationPort+","+protocol), 
+                new Text(cap_time+"."+cap_time_2+","+ibc)
+            );
 		}
 	}
 	
@@ -296,18 +310,78 @@ public class P3CoralProgram {
 			interval = conf.getInt("pcap.record.rate.interval", 60);		
 			REDms = conf.getLong("pcap.artificial.redms", 0);
 		}
+
+	    public double PDNormalDistribution(double m, double d, double x ) {	
+		    return 1/(d*Math.sqrt(2*Math.PI)) * 
+					    Math.exp( - Math.pow((x-m), 2) / (2*Math.pow(d, 2)) );
+	    }
+
+	    public double logPDNormalDistribution(double m, double d, double x ) {	
+		    return Math.log(PDNormalDistribution(m,d,x));
+	    }
+
+
+        public class PacketInfo {
+            public double timestamp;
+            public int byteCount;
+
+            public PacketInfo(String t, String bc) {
+                this.timestamp = Double.parseDouble(t);
+                this.byteCount = Integer.parseInt(bc);
+            }
+        }
 		
 	    public void reduce(Text key, Iterator<Text> value,
 	                    OutputCollector<Text, Text> output, Reporter reporter)
 	                   throws IOException {
 
-            long sum = 0;
 
+            ArrayList<PacketInfo> list = new ArrayList<PacketInfo>();
+
+            // Get values
             while( value.hasNext() ) {  
-                sum += 1;//Long.parseLong( value.next().toString() );
-                value.next();
+                String[] tok = value.next().toString().split(",");
+                PacketInfo packet = new PacketInfo(tok[0], tok[1]);
+                list.add(packet);
             }
-            output.collect(key, new Text(Long.toString(sum)));
+
+            // Sort array
+            Collections.sort(list, new Comparator<PacketInfo>() {
+
+                @Override
+                public int compare(PacketInfo c1, PacketInfo c2) {
+                    return Double.compare(c1.timestamp, c2.timestamp);
+                }
+            });
+
+            // ByteCount average
+            double count = 0;
+            for ( PacketInfo obj : list )
+                count += obj.byteCount;
+
+            double media = count/list.size();
+
+            // Timestamp average
+            count = 0;
+            for (int i=1; i<list.size();i++)
+            {
+                count += (list.get(i).timestamp - list.get(i-1).timestamp);
+            }
+
+            double mediaTimestamp = list.size() > 1 ? (count/(list.size()-1)) : 0;
+
+            //System.out.println(key+" Media:" + media + " timestamp:" + mediaTimestamp);
+
+            // Calcular probabilidades
+            double httpProb = logPDNormalDistribution(1300, 100, media) + logPDNormalDistribution(0.5, 0.5, mediaTimestamp);
+            double smtpProb = logPDNormalDistribution(100, 50, media) + logPDNormalDistribution(0.05, 0.1, mediaTimestamp);
+
+            if ( httpProb > smtpProb ) {
+                output.collect(key, new Text(media+","+mediaTimestamp+","+"HTTP"));
+            } 
+            else {
+                output.collect(key, new Text(media+","+mediaTimestamp+"SMTP"));
+            }
 	    }
     }
 
@@ -518,7 +592,7 @@ public class P3CoralProgram {
 		JobClient.runJob(countJobconf);	
 		
 	} catch (IOException e) {
-		// TODO Auto-generated catch block
+		// TODO Auto-generated catch block			System.arraycopy(value_bytes, PcapRec.POS_PT, proto, 0, 1);
 		e.printStackTrace();
 	}
   }    
