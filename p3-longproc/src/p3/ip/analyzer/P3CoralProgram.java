@@ -317,7 +317,7 @@ public class P3CoralProgram {
 	    }
 
 	    public double logPDNormalDistribution(double m, double d, double x ) {	
-		    return Math.log(PDNormalDistribution(m,d,x));
+		    return (x > 0) ? Math.log(PDNormalDistribution(m,d,x)) : 0;
 	    }
 
 
@@ -377,10 +377,10 @@ public class P3CoralProgram {
             double smtpProb = logPDNormalDistribution(100, 50, media) + logPDNormalDistribution(0.05, 0.1, mediaTimestamp);
 
             if ( httpProb > smtpProb ) {
-                output.collect(key, new Text(media+","+mediaTimestamp+","+"HTTP"));
+                output.collect(key, new Text(media+","+mediaTimestamp+",HTTP"));
             } 
             else {
-                output.collect(key, new Text(media+","+mediaTimestamp+"SMTP"));
+                output.collect(key, new Text(media+","+mediaTimestamp+",SMTP"));
             }
 	    }
     }
