@@ -212,7 +212,6 @@ public class P3CoralProgram {
     *******************************************/
 
 	public static int httpCount = 0, smtpCount = 0;
-    public static int totalPacketCount = 0, totalTimeCount = 0;
 	
 	public static class Map_TrafficAnalyzer extends MapReduceBase 
 	implements Mapper<LongWritable, BytesWritable, Text, Text>{
@@ -368,22 +367,20 @@ public class P3CoralProgram {
             }
 
             double mediaTimestamp = list.size() > 1 ? (count/(list.size()-1)) : 0;
-
+            
             //System.out.println(key+" Media:" + media + " timestamp:" + mediaTimestamp);
+            //if ( media == 0 || mediaTimestamp == 0 ) return;
 
             // Calcular probabilidades
-            double httpProb = logPDNormalDistribution(1300, 100, media) + logPDNormalDistribution(3, 1, mediaTimestamp);
-            double smtpProb = logPDNormalDistribution(100, 50, media) + logPDNormalDistribution(1, 1, mediaTimestamp);
-
-            totalPacketCount += media;
-            totalTimeCount += mediaTimestamp;
+            double httpProb = logPDNormalDistribution(628.7194, 385.1892, media) + logPDNormalDistribution(2.584803, 56.99175, mediaTimestamp);
+            double smtpProb = logPDNormalDistribution(222.4691, 282.4612, media) + logPDNormalDistribution(2.425682, 20.6584, mediaTimestamp);
 
             if ( httpProb > smtpProb ) {
-                output.collect(new Text(""), new Text(media+","+mediaTimestamp+",HTTP"));
+                output.collect(key, new Text(media+","+mediaTimestamp+",HTTP"));
                 httpCount += 1;
             } 
             else {
-                output.collect(new Text(""), new Text(media+","+mediaTimestamp+",SMTP"));
+                output.collect(key, new Text(media+","+mediaTimestamp+",SMTP"));
                 smtpCount += 1;
             }
 	    }
@@ -429,21 +426,21 @@ public class P3CoralProgram {
         }        
 		JobClient.runJob(countJobconf);	
 
-        double ratio = 0;
+        double httpRatio = (double)httpCount/(double)(httpCount+smtpCount);
+        double smtpRatio = (double)smtpCount/(double)(httpCount+smtpCount);
 
-        if ( inputDir.toString().toLowerCase().contains("http") ) {
-            ratio = (double)httpCount/(double)(httpCount+smtpCount);
+        System.out.println("################");
+        System.out.println("# HTTP: " + httpRatio + " SMTP: " + smtpRatio + " Total: " + (httpCount+smtpCount));
+        
+        if ( httpCount > smtpCount ) {
+            System.out.println("# Is mostly a HTTP pcap!");
         }
         else {
-            ratio = (double)smtpCount/(double)(httpCount+smtpCount);
+            System.out.println("# Is mostly a SMTP pcap!");
         }
-
-
-        System.out.println("HTTP: " + httpCount + " SMTP: " + smtpCount + " Total: " + (httpCount+smtpCount));
-        System.out.println("MediaPacket: " + ((double)totalPacketCount/(double)(httpCount+smtpCount)) + 
-                            " MediaTime: " + ((double)totalTimeCount/(double)(httpCount+smtpCount)) );
-        System.out.println("Sucess ratio: " + ratio);
-		
+        
+        System.out.println("################");
+        		
 	} catch (IOException e) {
 		// TODO Auto-generated catch block
 		e.printStackTrace();

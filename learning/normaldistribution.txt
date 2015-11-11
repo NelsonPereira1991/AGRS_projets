@@ -1,0 +1,25 @@
+################
+# HTTP
+################
+df <- read.csv('/home/pedro/Downloads/http.csv', sep = ",")
+
+# Packet
+mean(df[,1]) # 628.7194
+sd(df[,1]) # 385.1892
+
+# Time
+mean(df[,2]) # 2.584803
+sd(df[,2]) # 56.99175
+
+################
+# SMTP
+################
+df <- read.csv('/home/pedro/Downloads/smtp.csv', sep = ",")
+
+# Packet
+mean(df[,1]) # 222.4691
+sd(df[,1]) # 282.4612
+
+# Time
+mean(df[,2]) # 2.425682
+sd(df[,2]) # 20.6584
