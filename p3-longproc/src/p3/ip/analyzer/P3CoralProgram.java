@@ -211,7 +211,8 @@ public class P3CoralProgram {
 			TrafficAnalyzer function
     *******************************************/
 
-	
+	public static int httpCount = 0, smtpCount = 0;
+    public static int totalPacketCount = 0, totalTimeCount = 0;
 	
 	public static class Map_TrafficAnalyzer extends MapReduceBase 
 	implements Mapper<LongWritable, BytesWritable, Text, Text>{
@@ -221,8 +222,6 @@ public class P3CoralProgram {
 		// Ethernet 14 bytes; start 14; 
 		// IP 20 bytes; start 30; len 32; proto 39; srcIP 42; dstIP 46
 		// TCP 20 bytes ; start 50; srcPort 50; dstPort 52
-
-		
 		int interval = 0;
 		long MAPms = 0;
 		public void configure(JobConf conf){
@@ -373,14 +372,19 @@ public class P3CoralProgram {
             //System.out.println(key+" Media:" + media + " timestamp:" + mediaTimestamp);
 
             // Calcular probabilidades
-            double httpProb = logPDNormalDistribution(1300, 100, media) + logPDNormalDistribution(0.5, 0.5, mediaTimestamp);
-            double smtpProb = logPDNormalDistribution(100, 50, media) + logPDNormalDistribution(0.05, 0.1, mediaTimestamp);
+            double httpProb = logPDNormalDistribution(1300, 100, media) + logPDNormalDistribution(3, 1, mediaTimestamp);
+            double smtpProb = logPDNormalDistribution(100, 50, media) + logPDNormalDistribution(1, 1, mediaTimestamp);
+
+            totalPacketCount += media;
+            totalTimeCount += mediaTimestamp;
 
             if ( httpProb > smtpProb ) {
-                output.collect(key, new Text(media+","+mediaTimestamp+",HTTP"));
+                output.collect(new Text(""), new Text(media+","+mediaTimestamp+",HTTP"));
+                httpCount += 1;
             } 
             else {
-                output.collect(key, new Text(media+","+mediaTimestamp+",SMTP"));
+                output.collect(new Text(""), new Text(media+","+mediaTimestamp+",SMTP"));
+                smtpCount += 1;
             }
 	    }
     }
@@ -424,6 +428,21 @@ public class P3CoralProgram {
           fs.delete(FileOutputFormat.getOutputPath(countJobconf), true);
         }        
 		JobClient.runJob(countJobconf);	
+
+        double ratio = 0;
+
+        if ( inputDir.toString().toLowerCase().contains("http") ) {
+            ratio = (double)httpCount/(double)(httpCount+smtpCount);
+        }
+        else {
+            ratio = (double)smtpCount/(double)(httpCount+smtpCount);
+        }
+
+
+        System.out.println("HTTP: " + httpCount + " SMTP: " + smtpCount + " Total: " + (httpCount+smtpCount));
+        System.out.println("MediaPacket: " + ((double)totalPacketCount/(double)(httpCount+smtpCount)) + 
+                            " MediaTime: " + ((double)totalTimeCount/(double)(httpCount+smtpCount)) );
+        System.out.println("Sucess ratio: " + ratio);
 		
 	} catch (IOException e) {
 		// TODO Auto-generated catch block
