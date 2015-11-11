@@ -11,6 +11,12 @@ sd(df[,1]) # 385.1892
 mean(df[,2]) # 2.584803
 sd(df[,2]) # 56.99175
 
+ou
+
+library(fitdistrplus)
+f1 <- fitdist(df[,1],"norm")
+f1 <- fitdist(df[,2],"norm")
+
 ################
 # SMTP
 ################
@@ -23,3 +29,9 @@ sd(df[,1]) # 282.4612
 # Time
 mean(df[,2]) # 2.425682
 sd(df[,2]) # 20.6584
+
+ou
+
+library(fitdistrplus)
+f1 <- fitdist(df[,1],"norm")
+f1 <- fitdist(df[,2],"norm")

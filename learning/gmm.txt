@@ -1,0 +1,4 @@
+library(party)
+df <- read.csv('/home/pedro/Downloads/data.csv', sep = ",")
+native <- glm(Protocol ~ ., family = binomial(link = "logit"), na.action = na.pass, data=df)
+summary(native)
