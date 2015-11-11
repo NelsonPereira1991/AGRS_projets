@@ -1,4 +1,16 @@
 library(party)
 df <- read.csv('/home/pedro/Downloads/data.csv', sep = ",")
 native <- glm(Protocol ~ ., family = binomial(link = "logit"), na.action = na.pass, data=df)
+
 summary(native)
+##########
+Deviance Residuals: 
+    Min       1Q   Median       3Q      Max  
+-1.0582  -0.3084  -0.1731  -0.0239   4.9960  
+
+Coefficients:
+              Estimate Std. Error  z value Pr(>|z|)    
+(Intercept) -1.313e-02  1.070e-02   -1.228    0.220    
+Size        -8.312e-03  3.911e-05 -212.539   <2e-16 ***
+Time         3.647e-05  1.086e-04    0.336    0.737    
+##########
