@@ -38,6 +38,7 @@ import p3.hadoop.common.pcap.lib.PcapRec;
 import p3.hadoop.mapred.BinaryInputFormat;
 import p3.hadoop.mapred.BinaryOutputFormat;
 import netlab.hadoop.packet.PcapInputFormat;
+import org.apache.commons.math3.distribution.*;
 
 /**
  * 
@@ -211,7 +212,7 @@ public class P3CoralProgram {
 			TrafficAnalyzer function
     *******************************************/
 
-	public static int httpCount = 0, smtpCount = 0;
+	public static int httpCount = 0, smtpCount = 0, httpCount2 = 0, smtpCount2 = 0;
 	
 	public static class Map_TrafficAnalyzer extends MapReduceBase 
 	implements Mapper<LongWritable, BytesWritable, Text, Text>{
@@ -376,12 +377,39 @@ public class P3CoralProgram {
             double smtpProb = logPDNormalDistribution(222.4691, 282.4612, media) + logPDNormalDistribution(2.425682, 20.6584, mediaTimestamp);
 
             if ( httpProb > smtpProb ) {
-                output.collect(key, new Text(media+","+mediaTimestamp+",HTTP"));
+                //output.collect(key, new Text(media+","+mediaTimestamp+",HTTP"));
                 httpCount += 1;
             } 
             else {
-                output.collect(key, new Text(media+","+mediaTimestamp+",SMTP"));
+                //output.collect(key, new Text(media+","+mediaTimestamp+",SMTP"));
                 smtpCount += 1;
+            }
+            
+		    double[] means1 = new double[]{628.7194, 2.584803};
+		    double[][] C1 = new double[][] {
+                { Math.pow(385.1892, 2), 0 },
+                { 0, Math.pow(56.99175, 2) } 
+            };
+		    double[] means2 = new double[]{222.4691, 2.425682};
+		    double[][] C2 = new double[][] {
+                { Math.pow(282.4612, 2), 0 },
+                { 0, Math.pow(20.6584, 2) }
+            }; 
+                
+            double[] val = new double[]{media, mediaTimestamp};
+		
+		    MultivariateNormalDistribution m1 = new MultivariateNormalDistribution(means1, C1);
+		    MultivariateNormalDistribution m2 = new MultivariateNormalDistribution(means2, C2);
+		    //System.out.println("Densidade1: " + m1.density(val));
+		    //System.out.println("Densidade2: " + m2.density(val));
+		
+            if ( m1.density(val) > m2.density(val) ) {
+                //output.collect(key, new Text(media+","+mediaTimestamp+",HTTP"));
+                httpCount2 += 1;
+            } 
+            else {
+                //output.collect(key, new Text(media+","+mediaTimestamp+",SMTP"));
+                smtpCount2 += 1;
             }
 	    }
     }
@@ -430,9 +458,26 @@ public class P3CoralProgram {
         double smtpRatio = (double)smtpCount/(double)(httpCount+smtpCount);
 
         System.out.println("################");
+        System.out.println("# logPDNormalDistribution");
         System.out.println("# HTTP: " + httpRatio + " SMTP: " + smtpRatio + " Total: " + (httpCount+smtpCount));
         
         if ( httpCount > smtpCount ) {
+            System.out.println("# Is mostly a HTTP pcap!");
+        }
+        else {
+            System.out.println("# Is mostly a SMTP pcap!");
+        }
+        
+        System.out.println("################");
+        
+        double httpRatio2 = (double)httpCount2/(double)(httpCount2+smtpCount2);
+        double smtpRatio2 = (double)smtpCount2/(double)(httpCount2+smtpCount2);
+        
+        System.out.println("\n################");
+        System.out.println("# MultivariateNormalDistribution");
+        System.out.println("# HTTP: " + httpRatio2 + " SMTP: " + smtpRatio2 + " Total: " + (httpCount2+smtpCount2));
+        
+        if ( httpCount2 > smtpCount2 ) {
             System.out.println("# Is mostly a HTTP pcap!");
         }
         else {
