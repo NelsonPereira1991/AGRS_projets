@@ -39,7 +39,13 @@ import p3.hadoop.mapred.BinaryInputFormat;
 import p3.hadoop.mapred.BinaryOutputFormat;
 import netlab.hadoop.packet.PcapInputFormat;
 import org.apache.commons.math3.distribution.*;
+import org.apache.commons.math3.linear.Array2DRowRealMatrix;
+import org.apache.commons.math3.linear.RealMatrix;
+import org.apache.commons.math3.util.Pair;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 /**
  * 
  * @author yhlee in Chungnam National University
@@ -372,7 +378,7 @@ public class P3CoralProgram {
             //System.out.println(key+" Media:" + media + " timestamp:" + mediaTimestamp);
             //if ( media == 0 || mediaTimestamp == 0 ) return;
 
-            // Calcular probabilidades
+            // Calcular probabilidades usando NormalDistribution
             double httpProb = logPDNormalDistribution(628.7194, 385.1892, media) + logPDNormalDistribution(2.584803, 56.99175, mediaTimestamp);
             double smtpProb = logPDNormalDistribution(222.4691, 282.4612, media) + logPDNormalDistribution(2.425682, 20.6584, mediaTimestamp);
 
@@ -385,25 +391,55 @@ public class P3CoralProgram {
                 smtpCount += 1;
             }
             
-		    double[] means1 = new double[]{628.7194, 2.584803};
-		    double[][] C1 = new double[][] {
-                { Math.pow(385.1892, 2), 0 },
-                { 0, Math.pow(56.99175, 2) } 
-            };
-		    double[] means2 = new double[]{222.4691, 2.425682};
-		    double[][] C2 = new double[][] {
-                { Math.pow(282.4612, 2), 0 },
-                { 0, Math.pow(20.6584, 2) }
-            }; 
-                
+            // Calcular probabilidades usando MixtureMultivariateNormalDistribution
             double[] val = new double[]{media, mediaTimestamp};
-		
-		    MultivariateNormalDistribution m1 = new MultivariateNormalDistribution(means1, C1);
-		    MultivariateNormalDistribution m2 = new MultivariateNormalDistribution(means2, C2);
+            double[] weights = new double[] { 0.5, 0.5 };
+
+            // Http class
+            MultivariateNormalDistribution[] mvnHttp = new MultivariateNormalDistribution[2];
+            mvnHttp[0] = new MultivariateNormalDistribution(
+                        new double[] { 424.217, 2.592 },
+                        new double[][] {
+                            { Math.pow(100, 2), 0 },
+                            { 0, Math.pow(0.5, 2) } 
+            });
+            mvnHttp[1] = new MultivariateNormalDistribution(
+                        new double[] { 1205.283, 2.566 }, new double[][] {
+                        { Math.pow(100, 2), 0 },
+                        { 0, Math.pow(0.5, 2) } 
+            });
+
+            // Smtp class
+            MultivariateNormalDistribution[] mvnSmtp = new MultivariateNormalDistribution[2];
+            mvnSmtp[0] = new MultivariateNormalDistribution(
+                        new double[] { 821.091, 0.612 },
+                        new double[][] {
+                            { Math.pow(100, 2), 0 },
+                            { 0, Math.pow(0.5, 2) } 
+            });
+            mvnSmtp[1] = new MultivariateNormalDistribution(
+                        new double[] { 101.601, 2.792 }, new double[][] {
+                        { Math.pow(50, 2), 0 },
+                        { 0, Math.pow(0.05, 2) } 
+            });
+
+            // Http components
+            List<Pair<Double, MultivariateNormalDistribution>> componentsHttp = new ArrayList<Pair<Double, MultivariateNormalDistribution>>();
+            componentsHttp.add(new Pair<Double, MultivariateNormalDistribution>(weights[0], mvnHttp[0]));
+            componentsHttp.add(new Pair<Double, MultivariateNormalDistribution>(weights[1], mvnHttp[1]));
+
+            // Smtp components
+            List<Pair<Double, MultivariateNormalDistribution>> componentsSmtp = new ArrayList<Pair<Double, MultivariateNormalDistribution>>();
+            componentsSmtp.add(new Pair<Double, MultivariateNormalDistribution>(weights[0], mvnSmtp[0]));
+            componentsSmtp.add(new Pair<Double, MultivariateNormalDistribution>(weights[1], mvnSmtp[1]));
+
+            MixtureMultivariateNormalDistribution mHttp = new MixtureMultivariateNormalDistribution(componentsHttp);
+            MixtureMultivariateNormalDistribution mSmtp = new MixtureMultivariateNormalDistribution(componentsSmtp);
+
 		    //System.out.println("Densidade1: " + m1.density(val));
 		    //System.out.println("Densidade2: " + m2.density(val));
 		
-            if ( m1.density(val) > m2.density(val) ) {
+            if ( mHttp.density(val) > mSmtp.density(val) ) {
                 //output.collect(key, new Text(media+","+mediaTimestamp+",HTTP"));
                 httpCount2 += 1;
             } 
@@ -474,7 +510,7 @@ public class P3CoralProgram {
         double smtpRatio2 = (double)smtpCount2/(double)(httpCount2+smtpCount2);
         
         System.out.println("\n################");
-        System.out.println("# MultivariateNormalDistribution");
+        System.out.println("# MixtureMultivariateNormalDistribution");
         System.out.println("# HTTP: " + httpRatio2 + " SMTP: " + smtpRatio2 + " Total: " + (httpCount2+smtpCount2));
         
         if ( httpCount2 > smtpCount2 ) {
