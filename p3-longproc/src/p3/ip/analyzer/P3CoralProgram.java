@@ -393,7 +393,7 @@ public class P3CoralProgram {
             
             // Calcular probabilidades usando MixtureMultivariateNormalDistribution
             double[] val = new double[]{media, mediaTimestamp};
-            double[] weights = new double[] { 0.5, 0.5 };
+            double[] weights = new double[] { 0.8, 0.5 };
 
             // Http class
             MultivariateNormalDistribution[] mvnHttp = new MultivariateNormalDistribution[2];
@@ -412,15 +412,15 @@ public class P3CoralProgram {
             // Smtp class
             MultivariateNormalDistribution[] mvnSmtp = new MultivariateNormalDistribution[2];
             mvnSmtp[0] = new MultivariateNormalDistribution(
-                        new double[] { 821.091, 0.612 },
+                        new double[] { 821.138, 0.612 },
                         new double[][] {
-                            { Math.pow(100, 2), 0 },
-                            { 0, Math.pow(0.5, 2) } 
+                            { Math.pow(173.548, 2), 0 },
+                            { 0, Math.pow(4.032, 2) } 
             });
             mvnSmtp[1] = new MultivariateNormalDistribution(
                         new double[] { 101.601, 2.792 }, new double[][] {
-                        { Math.pow(50, 2), 0 },
-                        { 0, Math.pow(0.05, 2) } 
+                        { Math.pow(53.341, 2), 0 },
+                        { 0, Math.pow(22.558, 2) } 
             });
 
             // Http components
