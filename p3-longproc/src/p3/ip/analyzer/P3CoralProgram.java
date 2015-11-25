@@ -400,13 +400,13 @@ public class P3CoralProgram {
             mvnHttp[0] = new MultivariateNormalDistribution(
                         new double[] { 424.217, 2.592 },
                         new double[][] {
-                            { Math.pow(100, 2), 0 },
-                            { 0, Math.pow(0.5, 2) } 
+                            { Math.pow(162.760, 2), 0 },
+                            { 0, Math.pow(57.180, 2) } 
             });
             mvnHttp[1] = new MultivariateNormalDistribution(
                         new double[] { 1205.283, 2.566 }, new double[][] {
-                        { Math.pow(100, 2), 0 },
-                        { 0, Math.pow(0.5, 2) } 
+                        { Math.pow(204.101, 2), 0 },
+                        { 0, Math.pow(56.458, 2) } 
             });
 
             // Smtp class
