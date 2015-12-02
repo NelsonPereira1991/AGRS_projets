@@ -43,7 +43,7 @@ def mapTaskTimeCollector():
     """
 
     # Set job id range
-    configs.jobIdCounter = int(1447246962897)
+    configs.jobIdCounter = int(1448994181336)
     configs.analyzedJobIdCounter = int(1635456456)
 
 

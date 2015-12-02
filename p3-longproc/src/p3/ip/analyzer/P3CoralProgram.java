@@ -37,7 +37,8 @@ import p3.hadoop.common.pcap.lib.ExtendedBytesWritable;
 import p3.hadoop.common.pcap.lib.PcapRec;
 import p3.hadoop.mapred.BinaryInputFormat;
 import p3.hadoop.mapred.BinaryOutputFormat;
-import netlab.hadoop.packet.PcapInputFormat;
+//import netlab.hadoop.packet.PcapInputFormat;
+import p3.hadoop.mapred.PcapInputFormat;
 import org.apache.commons.math3.distribution.*;
 import org.apache.commons.math3.linear.Array2DRowRealMatrix;
 import org.apache.commons.math3.linear.RealMatrix;
@@ -217,8 +218,6 @@ public class P3CoralProgram {
 
 			TrafficAnalyzer function
     *******************************************/
-
-	public static int httpCount = 0, smtpCount = 0, httpCount2 = 0, smtpCount2 = 0;
 	
 	public static class Map_TrafficAnalyzer extends MapReduceBase 
 	implements Mapper<LongWritable, BytesWritable, Text, Text>{
@@ -296,9 +295,10 @@ public class P3CoralProgram {
 			//System.arraycopy(value_bytes, POS_TCP+tcpHeaderLenght, payload, 0, payloadLength);
 			//String payloadText = new String(payload, "UTF-8");
 
-            // Discard when payload length is 0
+            // Discard when payload length is 0 or protocol is different from TCP
             if( payloadLength == 0 || protocol != 6 ) return;	
 
+            // Organize by flow (with key bellow)
     		output.collect(
                 new Text(sourceIP+","+destinationIP+","+sourcePort+","+destinationPort+","+protocol), 
                 new Text(cap_time+"."+cap_time_2+","+ibc)
@@ -375,25 +375,20 @@ public class P3CoralProgram {
 
             double mediaTimestamp = list.size() > 1 ? (count/(list.size()-1)) : 0;
             
-            //System.out.println(key+" Media:" + media + " timestamp:" + mediaTimestamp);
-            //if ( media == 0 || mediaTimestamp == 0 ) return;
-
-            // Calcular probabilidades usando NormalDistribution
+            // Calcular probabilidades usando NormalDistribution (metodo 1)
             double httpProb = logPDNormalDistribution(628.7194, 385.1892, media) + logPDNormalDistribution(2.584803, 56.99175, mediaTimestamp);
             double smtpProb = logPDNormalDistribution(222.4691, 282.4612, media) + logPDNormalDistribution(2.425682, 20.6584, mediaTimestamp);
 
             if ( httpProb > smtpProb ) {
-                //output.collect(key, new Text(media+","+mediaTimestamp+",HTTP"));
-                httpCount += 1;
+                output.collect(key, new Text(media+","+mediaTimestamp+",HTTP"));
             } 
             else {
-                //output.collect(key, new Text(media+","+mediaTimestamp+",SMTP"));
-                smtpCount += 1;
+                output.collect(key, new Text(media+","+mediaTimestamp+",SMTP"));
             }
             
-            // Calcular probabilidades usando MixtureMultivariateNormalDistribution
-            double[] val = new double[]{media, mediaTimestamp};
-            double[] weights = new double[] { 0.8, 0.5 };
+            // Calcular probabilidades usando MixtureMultivariateNormalDistribution (metodo 2)
+            /*double[] val = new double[]{media, mediaTimestamp};
+            double[] weights = new double[] { 0.6, 0.4 };
 
             // Http class
             MultivariateNormalDistribution[] mvnHttp = new MultivariateNormalDistribution[2];
@@ -440,13 +435,11 @@ public class P3CoralProgram {
 		    //System.out.println("Densidade2: " + m2.density(val));
 		
             if ( mHttp.density(val) > mSmtp.density(val) ) {
-                //output.collect(key, new Text(media+","+mediaTimestamp+",HTTP"));
-                httpCount2 += 1;
+                output.collect(key, new Text(media+","+mediaTimestamp+",HTTP"));
             } 
             else {
-                //output.collect(key, new Text(media+","+mediaTimestamp+",SMTP"));
-                smtpCount2 += 1;
-            }
+                output.collect(key, new Text(media+","+mediaTimestamp+",SMTP"));
+            }*/
 	    }
     }
 
@@ -489,38 +482,6 @@ public class P3CoralProgram {
           fs.delete(FileOutputFormat.getOutputPath(countJobconf), true);
         }        
 		JobClient.runJob(countJobconf);	
-
-        double httpRatio = (double)httpCount/(double)(httpCount+smtpCount);
-        double smtpRatio = (double)smtpCount/(double)(httpCount+smtpCount);
-
-        System.out.println("################");
-        System.out.println("# logPDNormalDistribution");
-        System.out.println("# HTTP: " + httpRatio + " SMTP: " + smtpRatio + " Total: " + (httpCount+smtpCount));
-        
-        if ( httpCount > smtpCount ) {
-            System.out.println("# Is mostly a HTTP pcap!");
-        }
-        else {
-            System.out.println("# Is mostly a SMTP pcap!");
-        }
-        
-        System.out.println("################");
-        
-        double httpRatio2 = (double)httpCount2/(double)(httpCount2+smtpCount2);
-        double smtpRatio2 = (double)smtpCount2/(double)(httpCount2+smtpCount2);
-        
-        System.out.println("\n################");
-        System.out.println("# MixtureMultivariateNormalDistribution");
-        System.out.println("# HTTP: " + httpRatio2 + " SMTP: " + smtpRatio2 + " Total: " + (httpCount2+smtpCount2));
-        
-        if ( httpCount2 > smtpCount2 ) {
-            System.out.println("# Is mostly a HTTP pcap!");
-        }
-        else {
-            System.out.println("# Is mostly a SMTP pcap!");
-        }
-        
-        System.out.println("################");
         		
 	} catch (IOException e) {
 		// TODO Auto-generated catch block

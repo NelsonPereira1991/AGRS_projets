@@ -82,6 +82,7 @@
     	<zipgroupfileset dir="${lib.dir}">
             <include name="jpcap.jar"/>			
             <include name="p3utils.jar"/>	
+            <include name="commons-math3-3.5.jar"/>	
     	</zipgroupfileset>
       </jar>
     </target>
