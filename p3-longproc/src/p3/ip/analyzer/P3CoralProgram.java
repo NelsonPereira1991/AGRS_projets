@@ -376,7 +376,7 @@ public class P3CoralProgram {
             double mediaTimestamp = list.size() > 1 ? (count/(list.size()-1)) : 0;
             
             // Calcular probabilidades usando NormalDistribution (metodo 1)
-            double httpProb = logPDNormalDistribution(628.7194, 385.1892, media) + logPDNormalDistribution(2.584803, 56.99175, mediaTimestamp);
+            /*double httpProb = logPDNormalDistribution(628.7194, 385.1892, media) + logPDNormalDistribution(2.584803, 56.99175, mediaTimestamp);
             double smtpProb = logPDNormalDistribution(222.4691, 282.4612, media) + logPDNormalDistribution(2.425682, 20.6584, mediaTimestamp);
 
             if ( httpProb > smtpProb ) {
@@ -384,10 +384,10 @@ public class P3CoralProgram {
             } 
             else {
                 output.collect(key, new Text(media+","+mediaTimestamp+",SMTP"));
-            }
+            }*/
             
             // Calcular probabilidades usando MixtureMultivariateNormalDistribution (metodo 2)
-            /*double[] val = new double[]{media, mediaTimestamp};
+            double[] val = new double[]{media, mediaTimestamp};
             double[] weights = new double[] { 0.6, 0.4 };
 
             // Http class
@@ -439,7 +439,7 @@ public class P3CoralProgram {
             } 
             else {
                 output.collect(key, new Text(media+","+mediaTimestamp+",SMTP"));
-            }*/
+            }
 	    }
     }
 
