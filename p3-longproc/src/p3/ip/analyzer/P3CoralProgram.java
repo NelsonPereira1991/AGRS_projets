@@ -325,6 +325,10 @@ public class P3CoralProgram {
 		    return (x > 0) ? Math.log(PDNormalDistribution(m,d,x)) : 0;
 	    }
 
+	    public double logFunction(double x) {	
+		    return (x > 0) ? Math.log(x) : 0;
+	    }
+
 
         public class PacketInfo {
             public double timestamp;
@@ -360,7 +364,7 @@ public class P3CoralProgram {
             });
 
             // ByteCount average
-            double count = 0;
+            /*double count = 0;
             for ( PacketInfo obj : list )
                 count += obj.byteCount;
 
@@ -373,21 +377,24 @@ public class P3CoralProgram {
                 count += (list.get(i).timestamp - list.get(i-1).timestamp);
             }
 
-            double mediaTimestamp = list.size() > 1 ? (count/(list.size()-1)) : 0;
+            double mediaTimestamp = list.size() > 1 ? (count/(list.size()-1)) : 0;*/
             
-            // Calcular probabilidades usando NormalDistribution (metodo 1)
-            /*double httpProb = logPDNormalDistribution(628.7194, 385.1892, media) + logPDNormalDistribution(2.584803, 56.99175, mediaTimestamp);
-            double smtpProb = logPDNormalDistribution(222.4691, 282.4612, media) + logPDNormalDistribution(2.425682, 20.6584, mediaTimestamp);
+            // Soma das probabilidades em cada pacote
+            double httpProb = 0;
+            double smtpProb = 0;
 
-            if ( httpProb > smtpProb ) {
-                output.collect(key, new Text(media+","+mediaTimestamp+",HTTP"));
-            } 
-            else {
-                output.collect(key, new Text(media+","+mediaTimestamp+",SMTP"));
-            }*/
+            // Calcular probabilidades usando NormalDistribution (metodo 1)
+            // para cada pacote
+            /*for (int i=1; i<list.size();i++)
+            {
+                double timestampDifference = list.get(i).timestamp - list.get(i-1).timestamp;
+                double packetSize = list.get(i).byteCount;
+                httpProb += logPDNormalDistribution(628.7194, 385.1892, packetSize) + logPDNormalDistribution(2.584803, 56.99175, timestampDifference);
+                smtpProb += logPDNormalDistribution(222.4691, 282.4612, packetSize) + logPDNormalDistribution(2.425682, 20.6584, timestampDifference);
+            }
+            */
             
             // Calcular probabilidades usando MixtureMultivariateNormalDistribution (metodo 2)
-            double[] val = new double[]{media, mediaTimestamp};
             double[] weights = new double[] { 0.6, 0.4 };
 
             // Http class
@@ -431,14 +438,22 @@ public class P3CoralProgram {
             MixtureMultivariateNormalDistribution mHttp = new MixtureMultivariateNormalDistribution(componentsHttp);
             MixtureMultivariateNormalDistribution mSmtp = new MixtureMultivariateNormalDistribution(componentsSmtp);
 
-		    //System.out.println("Densidade1: " + m1.density(val));
-		    //System.out.println("Densidade2: " + m2.density(val));
-		
-            if ( mHttp.density(val) > mSmtp.density(val) ) {
-                output.collect(key, new Text(media+","+mediaTimestamp+",HTTP"));
+            // Calcular valores para cada pacote
+            for (int i=1; i<list.size();i++)
+            {
+                double timestampDifference = list.get(i).timestamp - list.get(i-1).timestamp;
+                double packetSize = list.get(i).byteCount;
+                double[] val = new double[]{packetSize, timestampDifference};
+                httpProb += logFunction(mHttp.density(val));
+                smtpProb += logFunction(mSmtp.density(val));
+            }
+
+            // Escreve no ficheiro
+            if ( httpProb > smtpProb ) {
+                output.collect(key, new Text("HTTP"));
             } 
             else {
-                output.collect(key, new Text(media+","+mediaTimestamp+",SMTP"));
+                output.collect(key, new Text("SMTP"));
             }
 	    }
     }
